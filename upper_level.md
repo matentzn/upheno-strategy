@@ -71,16 +71,16 @@ The term "abnormality" implies a binary normal/abnormal judgement and carries cl
 
 **Pros:**
 
-- Aligns with the COB mission to provide a shared upper-level for all OBO ontologies
 - Keeps PATO quality available as a more specific entry point for ontologies that don't need the COB layer
-- Follows the BFO-aligned design where "characteristic" is the general category and "quality" is one kind of characteristic (alongside dispositions, roles, etc.)
+- Safes an enormous amount of social coordination for one [of the most widely used OBO classes](https://www.ebi.ac.uk/ols4/ontologies/pato/classes/http%253A%252F%252Fpurl.obolibrary.org%252Fobo%252FPATO_0000001) - at the time of this writing (9 March 2026) more than 77 classes. **Replacing it with COB:0000502 across the OBO ecosystem is logistically impractical.**
 
 **Cons:**
 
 - **COB characteristic and PATO quality are effectively the same concept.** In practice, nearly all users of PATO treat `quality` as the universal root for all characteristics. Having both creates confusion about which to use.
-- **Migration cost is enormous.** Thousands of ontology terms, annotations, and tools reference PATO:0000001. Replacing it with COB:0000502 across the OBO ecosystem is logistically impractical.
-- **Semantic distinction is unclear.** The intended difference between "characteristic" and "quality" is subtle at best (BFO distinguishes qualities from dispositions and roles, but in practice PATO's `quality` already absorbs much of what COB means by `characteristic`).
-- **Pragmatic solution:** If COB adopted PATO:0000001 as its `characteristic` term (or made them equivalent), this problem would evaporate. This is the author's preferred resolution.
+
+**Alternatives to consider:**
+
+- **Pragmatic solution:** If COB adopted PATO:0000001 as its `characteristic` term (or made them equivalent), this problem would evaporate. This is the author's (`@matentzn`) preferred resolution.
 
 ### Decision 2: Biological attribute (OBA) as subclass of quality (PATO)
 
@@ -95,9 +95,11 @@ The term "abnormality" implies a binary normal/abnormal judgement and carries cl
 
 **Cons:**
 
-- **Ontological overloading of SubClassOf.** In strict OWL semantics, saying OBA:blood_glucose_concentration SubClassOf PATO:concentration means "every instance of blood glucose concentration is an instance of concentration." This is defensible but blurs the line between taxonomic subsumption and compositional structure. Some would argue the relationship is better captured by `has_quality` or a similar object property.
-- **Mixing abstraction levels.** PATO qualities are entity-independent universals; OBA attributes are entity-bound. Putting them in the same hierarchy conflates two different levels of specificity, which can be confusing for users expecting a clean separation.
-- **Scale and maintenance.** OBA has >10,000 terms. Ensuring every OBA term correctly subsumes under the right PATO branch requires ongoing automated QC.
+- **Ontological overloading of SubClassOf.** In strict OWL semantics, saying OBA:blood_glucose_concentration SubClassOf PATO:concentration means "every instance of blood glucose concentration is an instance of concentration." This is defensible but blurs the line between taxonomic subsumption and compositional structure. PATO qualities are entity-independent universals; OBA attributes are entity-bound. Some would argue the relationship is better captured by some (certainly weird sounding) object property.
+
+**Alternatives to consider:**
+
+- The author (`@matentzn` believes that the conceptual concerns are too blurry, and that the practical benefits of the decision far outweigh the possible ontological objections). That way there is no reasonable alternative.
 
 ### Decision 3: Phenotypic effect as subclass of biological attribute (OBA)
 
@@ -106,33 +108,19 @@ The term "abnormality" implies a binary normal/abnormal judgement and carries cl
 **Pros:**
 
 - Enables grouping phenotypic effects by their underlying trait. All effects related to blood glucose (increased, decreased, altered) cluster under the OBA attribute "blood glucose concentration" — extremely useful for data analysis and variant prioritisation.
-- Falls out naturally from OWL reasoning on the existing EQ logical definitions.
-- Makes the relationship between what is measured (OBA) and what changed (phenotypic effect) explicit and computable.
-- Supports Exomiser-style clinical tools that need to map patient phenotypes back to measurable biological traits.
+- Supports Exomiser-style clinical tools that need to _easily_ map patient phenotypes back to measurable biological traits.
 - **Mirrors what PATO already does internally.** PATO:0000470 "increased amount" is a SubClassOf PATO:0000070 "amount". The precedent of placing quality *values* under quality *dimensions* via SubClassOf is already baked into the most foundational quality ontology in the OBO ecosystem. If PATO treats "increased amount" as a kind of "amount", then treating "increased blood glucose concentration" as a kind of "blood glucose concentration" is the natural extension of the same pattern. (That said, this PATO pattern is itself not ontologically clean — it mirrors a broader messiness in PATO where values like "blue" are subclasses of "colour", even though a specific value and the dimension it sits on are fundamentally different ontological categories. The convenience classification inherits this debt rather than creating new debt.)
+- No need to have another massive debate about where to put this class in the COB hierarchy - because if it does not go under "biological attribute", where would it go?
 
 **Cons:**
 
 - **This is the most controversial decision.** Philosophically, a phenotypic effect is not "a kind of" trait — it is an *observation about* a trait. Saying "increased blood glucose" is-a "blood glucose concentration" conflates the measurement axis with the change. Many ontologists would argue effects should be related to attributes via an object property (e.g., `is_effect_on`) rather than SubClassOf.
 - **It is explicitly a convenience move.** The SubClassOf relationship is being used here not because it is the most ontologically correct representation, but because it is the most computationally convenient one — SubClassOf is universally supported by reasoners, query engines, and graph databases. Using a custom property would lose much of this tooling support.
-- **Risk of false inferences.** If a reasoner treats "increased blood glucose" as a *type* of "blood glucose concentration," it might incorrectly infer that any individual with the effect also has the attribute in the neutral sense. In practice this is manageable but requires care.
-- **HPO/MP don't currently model it this way.** Species-specific phenotype ontologies have their own internal hierarchies. Imposing a cross-cutting OBA-based hierarchy on top requires careful integration to avoid conflicts.
+- **HPO/MP don't currently model it this way.** Species-specific phenotype ontologies have their own internal hierarchies (Phenotype EQs link phenotypic effects to traits via "has-part", an unfortunate convenience relation). Imposing a cross-cutting OBA-based hierarchy on top requires careful integration to avoid conflicts.
 
-### Decision 4: Using SubClassOf throughout (rather than dedicated properties)
+**Alternatives to consider:**
 
-**What this means:** The entire four-level hierarchy uses owl:SubClassOf as the sole organising relation.
-
-**Pros:**
-
-- **Maximum tool compatibility.** Every OWL reasoner, SPARQL endpoint, graph database, and ontology browser understands SubClassOf. No custom properties needed.
-- **Simple mental model.** Users can navigate from phenotypic effect → attribute → quality → characteristic using a single "is-a" axis.
-- **Automated reasoning works out of the box.** ELK, HermiT, and other reasoners compute the full transitive closure of SubClassOf efficiently.
-
-**Cons:**
-
-- **Overloads SubClassOf with multiple meanings.** At level 2→3, SubClassOf means "contextualisation" (binding a quality to an entity). At level 3→4, it means "assertion of change." These are different semantic operations forced into the same syntactic relationship.
-- **Philosophical impurity.** BFO/OBO best practices suggest using SubClassOf only for true genus-species relationships. This proposal uses it for what is arguably compositional refinement, not taxonomic specialisation.
-- **May confuse ontology developers** who expect SubClassOf to mean strict set-theoretic inclusion and find it unintuitive that "a phenotypic effect is a kind of attribute."
+- **Pragmatic solution:** If COB accepted the fact that "phenotype/phenotypic effect" has been coordinated by virtually all phenotype ontologies over a decade and just accepted the class as a top level term based on that, the most important problems (practical considerations and conceptual) would go away. The author `@matentzn` would prefer that solution.
 
 ## Alternative: An Ontologically Cleaner Model
 
@@ -205,7 +193,7 @@ The current property connecting phenotypic effects to traits is `has part` (BFO:
 
 ### Recommendation
 
-The cleaner model is the right long-term direction, but the `has part` property should be replaced. The priority order:
+The cleaner model is the right long-term direction, but the `has part` property should be replaced (long-term at least). The priority order:
 
 1. **Keep OBA SubClassOf PATO** — this is a genuine logical entailment, not a hack.
 2. **Keep phenotypic effects separate from OBA** — do not force SubClassOf.
@@ -236,9 +224,9 @@ The recommended path forward is the cleaner model with a better property to repl
 ### Open Questions
 
 1. Will COB agree to adopt PATO:0000001 as its characteristic term (or declare equivalence)?
-2. What property should replace `has part` for the phenotypic effect → biological attribute link?
-3. How to handle edge cases where a phenotypic effect doesn't map cleanly to a single OBA attribute (e.g., complex multi-system phenotypes)?
-4. Should uPheno provide both a SubClassOf-based convenience hierarchy (for tools that only walk is-a) and a property-based clean hierarchy (for semantically aware systems)?
+1. What property should replace `has part` for the phenotypic effect → biological attribute link?
+1. Will COB agree to adopt UPHENO:0001001 (phenotype) as a top level term into COB core?
+
 
 ## References
 
