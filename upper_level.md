@@ -109,6 +109,7 @@ The term "abnormality" implies a binary normal/abnormal judgement and carries cl
 - Falls out naturally from OWL reasoning on the existing EQ logical definitions.
 - Makes the relationship between what is measured (OBA) and what changed (phenotypic effect) explicit and computable.
 - Supports Exomiser-style clinical tools that need to map patient phenotypes back to measurable biological traits.
+- **Mirrors what PATO already does internally.** PATO:0000470 "increased amount" is a SubClassOf PATO:0000070 "amount". The precedent of placing quality *values* under quality *dimensions* via SubClassOf is already baked into the most foundational quality ontology in the OBO ecosystem. If PATO treats "increased amount" as a kind of "amount", then treating "increased blood glucose concentration" as a kind of "blood glucose concentration" is the natural extension of the same pattern. (That said, this PATO pattern is itself not ontologically clean — it mirrors a broader messiness in PATO where values like "blue" are subclasses of "colour", even though a specific value and the dimension it sits on are fundamentally different ontological categories. The convenience classification inherits this debt rather than creating new debt.)
 
 **Cons:**
 
